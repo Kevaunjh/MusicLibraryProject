@@ -63,6 +63,20 @@ public class Handler {
         }
     }
 
+    public void loadSongs(ObservableList<String> songList) {
+        File downloadsDir = new File("../../Downloads");
+        if (downloadsDir.exists() && downloadsDir.isDirectory()) {
+            File[] files = downloadsDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.getName().endsWith(".mp3")) {
+                        songList.add(file.getName());
+                    }
+                }
+            }
+        }
+    }
+
     public void downloadFromCommunityPlaylist(String songName, Path communityPlaylistDirectory,
             Path currentClientDownloadsDirectory, ObservableList<String> downloadedSongs) {
         if (songName != null) {

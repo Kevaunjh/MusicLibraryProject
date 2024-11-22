@@ -1,6 +1,7 @@
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -16,6 +17,7 @@ public class MusicLibraryGUI extends Application {
     private final Handler handler = new Handler();
     private final ObservableList<String> downloadedSongs = FXCollections.observableArrayList();
     private final ObservableList<String> communityPlaylist = FXCollections.observableArrayList();
+    private final ObservableList<String> connectedPeers = FXCollections.observableArrayList();
     private Path currentClientDownloadsDirectory;
     private Path communityPlaylistDirectory;
 
@@ -46,8 +48,16 @@ public class MusicLibraryGUI extends Application {
         playbackLayout.setAlignment(Pos.CENTER);
         playbackLayout.setPadding(new Insets(10));
 
-        ListView<String> songList = new ListView<>();
-        handler.loadSongs(songList);
+        ObservableList<String> songObservableList = FXCollections.observableArrayList();
+        FilteredList<String> filteredSongs = new FilteredList<>(songObservableList, p -> true);
+        ListView<String> songList = new ListView<>(filteredSongs);
+        handler.loadSongs(songObservableList);
+
+        TextField searchFieldBrowse = new TextField();
+        searchFieldBrowse.setPromptText("Search songs...");
+        searchFieldBrowse.textProperty().addListener((obs, oldText, newText) -> {
+            filteredSongs.setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase()));
+        });
 
         Button playButton = new Button("▶ Play");
         Button pauseButton = new Button("⏸ Pause");
@@ -69,15 +79,21 @@ public class MusicLibraryGUI extends Application {
         HBox controls = new HBox(10, playButton, pauseButton, stopButton, downloadButton, addPlaylistButton);
         controls.setAlignment(Pos.CENTER);
 
-        playbackLayout.getChildren().addAll(songList, controls);
+        playbackLayout.getChildren().addAll(searchFieldBrowse, songList, controls);
 
         // Community Playlist Tab
         VBox communityLayout = new VBox(10);
         communityLayout.setAlignment(Pos.CENTER);
         communityLayout.setPadding(new Insets(10));
 
-        ListView<String> communityListView = new ListView<>(communityPlaylist);
-        Label communityLabel = new Label("Community Playlist");
+        FilteredList<String> filteredCommunity = new FilteredList<>(communityPlaylist, p -> true);
+        ListView<String> communityListView = new ListView<>(filteredCommunity);
+
+        TextField searchFieldCommunity = new TextField();
+        searchFieldCommunity.setPromptText("Search playlist...");
+        searchFieldCommunity.textProperty().addListener((obs, oldText, newText) -> {
+            filteredCommunity.setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase()));
+        });
 
         Button downloadFromPlaylistButton = new Button("Download from Playlist");
         downloadFromPlaylistButton.setOnAction(e -> handler.downloadFromCommunityPlaylist(
@@ -95,29 +111,70 @@ public class MusicLibraryGUI extends Application {
         HBox communityControls = new HBox(10, downloadFromPlaylistButton, removeFromPlaylistButton);
         communityControls.setAlignment(Pos.CENTER);
 
-        communityLayout.getChildren().addAll(communityLabel, communityListView, communityControls);
+        communityLayout.getChildren().addAll(searchFieldCommunity, communityListView, communityControls);
 
         // My Downloads Tab
         VBox downloadsLayout = new VBox(10);
         downloadsLayout.setAlignment(Pos.CENTER);
         downloadsLayout.setPadding(new Insets(10));
 
-        ListView<String> downloadsList = new ListView<>(downloadedSongs);
-        Label downloadsLabel = new Label("My Downloads");
+        FilteredList<String> filteredDownloads = new FilteredList<>(downloadedSongs, p -> true);
+        ListView<String> downloadsList = new ListView<>(filteredDownloads);
+
+        TextField searchFieldDownloads = new TextField();
+        searchFieldDownloads.setPromptText("Search downloads...");
+        searchFieldDownloads.textProperty().addListener((obs, oldText, newText) -> {
+            filteredDownloads.setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase()));
+        });
 
         Button playDownloadedButton = new Button("▶ Play");
         Button pauseDownloadedButton = new Button("⏸ Pause");
         Button stopDownloadedButton = new Button("⏹ Stop");
+        Button addDownloadedToPlaylistButton = new Button("+ Add to Community Playlist");
 
         playDownloadedButton
                 .setOnAction(e -> handler.playSelectedDownloadedSong(downloadsList, currentClientDownloadsDirectory));
         pauseDownloadedButton.setOnAction(e -> handler.getPlayer().pause());
         stopDownloadedButton.setOnAction(e -> handler.getPlayer().stop());
+        addDownloadedToPlaylistButton.setOnAction(e -> handler.addToCommunityPlaylist(
+                downloadsList.getSelectionModel().getSelectedItem(),
+                currentClientDownloadsDirectory,
+                communityPlaylistDirectory,
+                communityPlaylist));
 
-        HBox downloadsControls = new HBox(10, playDownloadedButton, pauseDownloadedButton, stopDownloadedButton);
+        HBox downloadsControls = new HBox(10, playDownloadedButton, pauseDownloadedButton, stopDownloadedButton,
+                addDownloadedToPlaylistButton);
         downloadsControls.setAlignment(Pos.CENTER);
 
-        downloadsLayout.getChildren().addAll(downloadsLabel, downloadsList, downloadsControls);
+        downloadsLayout.getChildren().addAll(searchFieldDownloads, downloadsList, downloadsControls);
+
+        // My Peers Tab
+        VBox peersLayout = new VBox(10);
+        peersLayout.setAlignment(Pos.CENTER);
+        peersLayout.setPadding(new Insets(10));
+
+        FilteredList<String> filteredPeers = new FilteredList<>(connectedPeers, p -> true);
+        ListView<String> peersListView = new ListView<>(filteredPeers);
+
+        TextField searchFieldPeers = new TextField();
+        searchFieldPeers.setPromptText("Search peers...");
+        searchFieldPeers.textProperty().addListener((obs, oldText, newText) -> {
+            filteredPeers.setPredicate(peer -> peer.toLowerCase().contains(newText.toLowerCase()));
+        });
+
+        Button refreshPeersButton = new Button("Refresh Peers");
+        Button downloadFromPeerButton = new Button("Download Songs from Peer");
+
+        refreshPeersButton.setOnAction(e -> handler.refreshPeerList(connectedPeers));
+        downloadFromPeerButton.setOnAction(e -> handler.downloadFromPeer(
+                peersListView.getSelectionModel().getSelectedItem(),
+                currentClientDownloadsDirectory,
+                downloadedSongs));
+
+        HBox peersControls = new HBox(10, refreshPeersButton, downloadFromPeerButton);
+        peersControls.setAlignment(Pos.CENTER);
+
+        peersLayout.getChildren().addAll(searchFieldPeers, peersListView, peersControls);
 
         // Tab Pane
         TabPane tabPane = new TabPane();
@@ -127,8 +184,10 @@ public class MusicLibraryGUI extends Application {
         communityTab.setClosable(false);
         Tab downloadsTab = new Tab("My Downloads", downloadsLayout);
         downloadsTab.setClosable(false);
+        Tab peersTab = new Tab("My Peers", peersLayout);
+        peersTab.setClosable(false);
 
-        tabPane.getTabs().addAll(browseTab, communityTab, downloadsTab);
+        tabPane.getTabs().addAll(browseTab, communityTab, downloadsTab, peersTab);
 
         Scene scene = new Scene(tabPane, 600, 400);
         primaryStage.setScene(scene);
