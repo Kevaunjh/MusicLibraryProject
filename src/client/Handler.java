@@ -29,25 +29,35 @@ public class Handler {
             showError("Download Directory Not Set", "The download directory is not initialized.");
             return;
         }
+
+        // Get the selected song from the list
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
+            // Check if the song is already downloaded
             if (downloadedSongs.contains(selectedSong)
                     || isFileAlreadyInDownloads(selectedSong, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
                 return;
             }
 
-            String sourcePath = "../Songs/" + selectedSong;
-            protocol.downloadFile(null, sourcePath, currentClientDownloadsDirectory.toString());
-            File downloadedFile = new File(currentClientDownloadsDirectory.toFile(), selectedSong);
-            if (downloadedFile.exists()) {
+            // Define source and target files
+            File sourceFile = new File("../Songs", selectedSong); // Assuming source is in `../Songs/`
+            File targetFile = new File(currentClientDownloadsDirectory.toFile(), selectedSong);
+
+            try {
+                // Copy the file to the downloads directory
+                Files.copy(sourceFile.toPath(), targetFile.toPath());
                 downloadedSongs.add(selectedSong);
+
+                // Show success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Download Successful");
+                successAlert.setHeaderText(null);
                 successAlert.setContentText("File downloaded to My Downloads: " + selectedSong);
                 successAlert.showAndWait();
-            } else {
-                showError("Download Failed", "The file could not be downloaded.");
+            } catch (Exception e) {
+                showError("Download Failed", "The file could not be downloaded: " + e.getMessage());
+                e.printStackTrace();
             }
         } else {
             showError("No Song Selected", "Please select a song to download.");
@@ -100,24 +110,49 @@ public class Handler {
         }
     }
 
-    public void downloadFromPeer(String peerAddress, Path currentClientDownloadsDirectory,
-            ObservableList<String> downloadedSongs) {
-        if (peerAddress != null) {
-            String[] peerSongs = { "song1.mp3", "song2.mp3" }; // Mock data, replace with actual peer songs
-            for (String song : peerSongs) {
-                if (!downloadedSongs.contains(song)
-                        && !isFileAlreadyInDownloads(song, currentClientDownloadsDirectory)) {
-                    protocol.downloadFile(new InetSocketAddress(peerAddress, 5000), song,
-                            currentClientDownloadsDirectory.toString());
-                    downloadedSongs.add(song);
-                }
+    public void downloadFromPeer(String peerName, Path downloadsDirectory, ObservableList<String> downloadedSongs) {
+        try {
+            System.out.println("Downloading from peer: " + peerName);
+
+            // Construct the peer's directory path
+            Path peerDirectory = Path.of("./client", "client/" + peerName);
+            System.out.println("Peer directory path: " + peerDirectory);
+
+            if (!Files.exists(peerDirectory) || !Files.isDirectory(peerDirectory)) {
+                System.out.println("Peer directory does not exist: " + peerDirectory);
+                throw new IllegalArgumentException("The peer directory does not exist: " + peerDirectory);
             }
-            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-            successAlert.setTitle("Download Successful");
-            successAlert.setContentText("All songs from peer downloaded.");
-            successAlert.showAndWait();
-        } else {
-            showError("No Peer Selected", "Please select a peer to download from.");
+
+            // Iterate over files in the peer's directory
+            Files.list(peerDirectory)
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".mp3"))
+                    .forEach(file -> {
+                        try {
+                            String fileName = file.getFileName().toString();
+
+                            // Check if the file is already downloaded
+                            if (downloadedSongs.contains(fileName) ||
+                                    Files.exists(downloadsDirectory.resolve(fileName))) {
+                                System.out.println("File already exists in downloads: " + fileName);
+                                return; // Skip downloading the file
+                            }
+
+                            // Define the target file in the downloads directory
+                            Path targetFile = downloadsDirectory.resolve(fileName);
+
+                            // Copy the file to the downloads directory
+                            Files.copy(file, targetFile);
+                            downloadedSongs.add(fileName);
+                            System.out.println("Downloaded: " + fileName);
+                        } catch (Exception e) {
+                            System.err.println("Error downloading file: " + file.getFileName());
+                            e.printStackTrace();
+                        }
+                    });
+        } catch (Exception e) {
+            System.err.println("Error downloading from peer: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

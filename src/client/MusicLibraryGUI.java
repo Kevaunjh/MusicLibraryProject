@@ -11,6 +11,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -23,12 +24,14 @@ public class MusicLibraryGUI extends Application {
     private final ObservableList<String> downloadedSongs = FXCollections.observableArrayList(); // For My Downloads
     private final ObservableList<String> communityPlaylist = FXCollections.observableArrayList(); // For Community
                                                                                                   // Playlist
-    private Path currentClientDownloadsDirectory; // For download directory
-    private Path communityPlaylistDirectory; // For community playlist directory
+    private Path currentClientDownloadsDirectory; // Unique download directory for this client
+    private Path communityPlaylistDirectory; // Shared community playlist directory
 
-    public MusicLibraryGUI(Library musicLibrary, ObservableList<String> connectedPeers) {
+    public MusicLibraryGUI(Library musicLibrary, ObservableList<String> connectedPeers,
+            Path currentClientDownloadsDirectory) {
         this.musicLibrary = musicLibrary;
         this.connectedPeers = connectedPeers;
+        this.currentClientDownloadsDirectory = currentClientDownloadsDirectory;
     }
 
     @Override
@@ -47,7 +50,7 @@ public class MusicLibraryGUI extends Application {
         // Tab Pane for navigation
         TabPane tabPane = new TabPane();
 
-        // Tabs
+        // Add tabs to the pane
         tabPane.getTabs().add(createBrowsePlayTab());
         tabPane.getTabs().add(createMyDownloadsTab());
         tabPane.getTabs().add(createCommunityPlaylistTab());
@@ -61,15 +64,16 @@ public class MusicLibraryGUI extends Application {
 
     private boolean initializeClientDirectories() {
         try {
-            // Initialize download directory
-            String uniqueClientDirName = "Client_" + System.currentTimeMillis();
-            currentClientDownloadsDirectory = Path.of("./client/client", uniqueClientDirName);
-            Files.createDirectories(currentClientDownloadsDirectory);
+            // Use the directory passed from the Client class
+            if (currentClientDownloadsDirectory == null || !Files.exists(currentClientDownloadsDirectory)) {
+                throw new IllegalStateException("Client downloads directory is not initialized or does not exist.");
+            }
 
-            // Initialize community playlist directory
+            // Set up the shared community playlist directory
             communityPlaylistDirectory = Path.of("../server/Playlist");
             Files.createDirectories(communityPlaylistDirectory);
 
+            // Load community playlist into the observable list
             handler.loadCommunityPlaylist(communityPlaylistDirectory, communityPlaylist);
             return true;
         } catch (Exception e) {
@@ -84,7 +88,7 @@ public class MusicLibraryGUI extends Application {
         playbackLayout.setAlignment(Pos.CENTER);
         playbackLayout.setPadding(new Insets(10));
 
-        // Filtered list for dynamic searching
+        // Filtered list for searching songs
         FilteredList<String> filteredSongs = new FilteredList<>(songObservableList, p -> true);
         ListView<String> songList = new ListView<>(filteredSongs);
 
@@ -119,7 +123,7 @@ public class MusicLibraryGUI extends Application {
         downloadsLayout.setAlignment(Pos.CENTER);
         downloadsLayout.setPadding(new Insets(10));
 
-        // Filtered list for dynamic searching
+        // Filtered list for searching downloads
         FilteredList<String> filteredDownloads = new FilteredList<>(downloadedSongs, p -> true);
         ListView<String> downloadsList = new ListView<>(filteredDownloads);
 
@@ -159,7 +163,7 @@ public class MusicLibraryGUI extends Application {
         communityLayout.setAlignment(Pos.CENTER);
         communityLayout.setPadding(new Insets(10));
 
-        // Filtered list for dynamic searching
+        // Filtered list for searching the community playlist
         FilteredList<String> filteredCommunity = new FilteredList<>(communityPlaylist, p -> true);
         ListView<String> communityListView = new ListView<>(filteredCommunity);
 
@@ -169,13 +173,14 @@ public class MusicLibraryGUI extends Application {
                 .setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase())));
 
         Button downloadFromPlaylistButton = new Button("Download from Playlist");
+        Button removeFromPlaylistButton = new Button("Remove from Playlist");
+
         downloadFromPlaylistButton.setOnAction(e -> handler.downloadFromCommunityPlaylist(
                 communityListView.getSelectionModel().getSelectedItem(),
                 communityPlaylistDirectory,
                 currentClientDownloadsDirectory,
                 downloadedSongs));
 
-        Button removeFromPlaylistButton = new Button("Remove from Playlist");
         removeFromPlaylistButton.setOnAction(e -> handler.removeFromCommunityPlaylist(
                 communityListView.getSelectionModel().getSelectedItem(),
                 communityPlaylistDirectory,
@@ -218,7 +223,10 @@ public class MusicLibraryGUI extends Application {
         downloadFromPeerButton.setOnAction(e -> {
             String selectedPeer = peersListView.getSelectionModel().getSelectedItem();
             if (selectedPeer != null) {
+                System.out.println("Selected peer: " + selectedPeer); // Debug log
                 handler.downloadFromPeer(selectedPeer, currentClientDownloadsDirectory, downloadedSongs);
+            } else {
+                showError("No Peer Selected", "Please select a peer to download from.");
             }
         });
 
