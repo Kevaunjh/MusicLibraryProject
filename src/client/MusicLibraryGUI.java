@@ -11,6 +11,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -88,7 +89,7 @@ public class MusicLibraryGUI extends Application {
         playbackLayout.setAlignment(Pos.CENTER);
         playbackLayout.setPadding(new Insets(10));
 
-        // Filtered list for searching songs
+        // Filtered list for dynamic searching
         FilteredList<String> filteredSongs = new FilteredList<>(songObservableList, p -> true);
         ListView<String> songList = new ListView<>(filteredSongs);
 
@@ -97,25 +98,115 @@ public class MusicLibraryGUI extends Application {
         searchField.textProperty().addListener((obs, oldText, newText) -> filteredSongs
                 .setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase())));
 
+        // Slider for song progress
+        Slider progressSlider = new Slider();
+        progressSlider.setMin(0);
+        progressSlider.setMax(1);
+        progressSlider.setValue(0);
+        progressSlider.setDisable(true); // Initially disabled
+
+        // Label to display x/y format
+        Label timeLabel = new Label("0:00 / 0:00");
+        timeLabel.setStyle("-fx-font-size: 12px;");
+
         Button playButton = new Button("▶ Play");
         Button pauseButton = new Button("⏸ Pause");
         Button stopButton = new Button("⏹ Stop");
         Button downloadButton = new Button("Download");
 
-        playButton.setOnAction(e -> handler.playSelectedSong(songList));
-        pauseButton.setOnAction(e -> handler.getPlayer().pause());
-        stopButton.setOnAction(e -> handler.getPlayer().stop());
-        downloadButton.setOnAction(
-                e -> handler.downloadSelectedSong(songList, currentClientDownloadsDirectory, downloadedSongs));
+        playButton.setOnAction(e -> {
+            handler.playSelectedSong(songList);
+
+            if (handler.getPlayer() != null) {
+                progressSlider.setDisable(false); // Enable the slider
+                progressSlider.setValue(0); // Reset slider to start
+
+                // Wait for the MediaPlayer to be ready
+                handler.getPlayer().getMediaPlayer().setOnReady(() -> {
+                    System.out.println("MediaPlayer is ready. Starting playback...");
+
+                    // Set the slider's maximum to the total duration of the song
+                    progressSlider.setMax(handler.getPlayer().getTotalDuration().toSeconds());
+                    timeLabel.setText("0:00 / " + formatTime(handler.getPlayer().getTotalDuration()));
+
+                    // Update slider and time label as the song progresses
+                    handler.getPlayer().currentTimeProperty().addListener((obs, oldTime, newTime) -> {
+                        if (!progressSlider.isValueChanging()) { // Avoid conflicts while dragging
+                            progressSlider.setValue(newTime.toSeconds());
+                        }
+
+                        // Update the time label with current and total duration
+                        timeLabel.setText(
+                                formatTime(newTime) + " / " + formatTime(handler.getPlayer().getTotalDuration()));
+                    });
+
+                    handler.getPlayer().play(); // Play the song once ready
+                });
+            }
+        });
+
+        pauseButton.setOnAction(e -> {
+            if (handler.getPlayer() != null) {
+                handler.getPlayer().pause();
+            }
+        });
+
+        stopButton.setOnAction(e -> {
+            if (handler.getPlayer() != null) {
+                handler.getPlayer().stop();
+            }
+            progressSlider.setValue(0);
+            progressSlider.setDisable(true);
+            timeLabel.setText("0:00 / 0:00");
+        });
+
+        downloadButton.setOnAction(e -> {
+            handler.downloadSelectedSong(songList, currentClientDownloadsDirectory, downloadedSongs);
+        });
+
+        // Handle slider interaction (drag or click)
+        progressSlider.valueChangingProperty().addListener((obs, wasChanging, isNowChanging) -> {
+            if (!isNowChanging) { // User finished dragging
+                if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
+                    Duration seekTime = Duration.seconds(progressSlider.getValue());
+                    handler.getPlayer().seek(seekTime); // Seek to the selected time
+                    System.out.println("Seeking to: " + formatTime(seekTime));
+                }
+            }
+        });
+
+        // Handle slider tap to seek
+        progressSlider.setOnMousePressed(event -> {
+            if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
+                double mouseX = event.getX();
+                double sliderWidth = progressSlider.getWidth();
+                double percent = mouseX / sliderWidth;
+                double seekTimeInSeconds = percent * progressSlider.getMax();
+
+                progressSlider.setValue(seekTimeInSeconds); // Update slider value
+                Duration seekTime = Duration.seconds(seekTimeInSeconds);
+                handler.getPlayer().seek(seekTime); // Seek to the selected time
+                System.out.println("Tapped slider, seeking to: " + formatTime(seekTime));
+            }
+        });
 
         HBox controls = new HBox(10, playButton, pauseButton, stopButton, downloadButton);
         controls.setAlignment(Pos.CENTER);
 
-        playbackLayout.getChildren().addAll(searchField, songList, controls);
+        playbackLayout.getChildren().addAll(searchField, songList, progressSlider, timeLabel, controls);
 
         Tab browseTab = new Tab("Browse & Play", playbackLayout);
         browseTab.setClosable(false);
         return browseTab;
+    }
+
+    private String formatTime(Duration duration) {
+        if (duration == null || duration.isUnknown()) {
+            return "0:00";
+        }
+        int minutes = (int) duration.toMinutes();
+        int seconds = (int) (duration.toSeconds() % 60);
+        return String.format("%d:%02d", minutes, seconds);
     }
 
     private Tab createMyDownloadsTab() {

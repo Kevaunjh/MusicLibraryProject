@@ -1,50 +1,40 @@
 package client;
 
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 
 public class MusicPlayer {
     private MediaPlayer player;
     private MediaPlayer.Status currentStatus = MediaPlayer.Status.UNKNOWN; // Global status
+    private boolean isPlayQueued = false; // Tracks if playback is already queued for the READY state
 
     // Play the song
     public void play() {
         if (player != null) {
-            switch (currentStatus) {
-                case READY:
-                    System.out.println("Playing song from the beginning...");
-                    player.seek(Duration.ZERO); // Start from the beginning
-                    player.play();
-                    break;
-                case PAUSED:
-                    System.out.println("Resuming song from current position: " + player.getCurrentTime().toSeconds()
-                            + " seconds.");
-                    player.play();
-                    break;
-                case PLAYING:
-                    System.out.println("The song is already playing.");
-                    break;
-                case STOPPED:
-                    System.out.println("Restarting song from the beginning...");
-                    player.seek(Duration.ZERO); // Reset to the beginning before playing
-                    player.play();
-                    break;
-                case UNKNOWN:
-                    System.out.println("MediaPlayer status is UNKNOWN. Waiting for the song to be ready...");
+            if (currentStatus == MediaPlayer.Status.READY) {
+                System.out.println("Playing song...");
+                player.play();
+                isPlayQueued = false; // Clear queued play flag
+            } else if (currentStatus == MediaPlayer.Status.PAUSED || currentStatus == MediaPlayer.Status.STOPPED) {
+                System.out.println("Resuming playback...");
+                player.play();
+            } else if (currentStatus == MediaPlayer.Status.PLAYING) {
+                System.out.println("The song is already playing.");
+            } else if (currentStatus == MediaPlayer.Status.UNKNOWN) {
+                if (!isPlayQueued) {
+                    System.out.println("MediaPlayer is not ready. Waiting for readiness...");
+                    isPlayQueued = true;
                     player.setOnReady(() -> {
-                        System.out.println("Song is now ready. Playing...");
-                        player.play();
+                        System.out.println("MediaPlayer is ready. Starting playback...");
+                        play(); // Start playback when ready
                     });
-                    break;
-                case DISPOSED:
-                    System.out.println("Cannot play. The MediaPlayer is disposed. Please reload the song.");
-                    break;
-                default:
-                    System.out.println("Cannot play. Current status: " + currentStatus);
+                }
+            } else {
+                System.out.println("Cannot play. Current status: " + currentStatus);
             }
         } else {
             System.out.println("No song loaded to play.");
@@ -65,8 +55,8 @@ public class MusicPlayer {
     public void stop() {
         if (player != null) {
             System.out.println("Stopping song and resetting playback...");
-            player.stop(); // Stops playback and resets the position to the beginning
-            player.seek(Duration.ZERO); // Explicitly seek to the start
+            player.stop();
+            player.seek(Duration.ZERO); // Reset playback position
             System.out.println("Playback position reset to the beginning.");
         } else {
             System.out.println("No song is currently playing to stop.");
@@ -118,10 +108,15 @@ public class MusicPlayer {
 
             System.out.println("Initial MediaPlayer status: " + player.getStatus());
 
-            // Start playback automatically when the song is ready
+            // Clear queued play flag when a new song is loaded
+            isPlayQueued = false;
+
+            // Set up readiness logging without starting playback
             player.setOnReady(() -> {
-                System.out.println("Song loaded successfully and ready to play.");
-                play(); // Automatically start playback
+                System.out.println("Song is ready for playback.");
+                if (isPlayQueued) {
+                    play(); // Start playback if queued
+                }
             });
 
             player.setOnError(() -> {
@@ -144,5 +139,33 @@ public class MusicPlayer {
     // Get the current MediaPlayer status
     public MediaPlayer.Status getStatus() {
         return currentStatus;
+    }
+
+    // Get the current playback time property
+    public ReadOnlyObjectProperty<Duration> currentTimeProperty() {
+        if (player == null) {
+            System.err.println("Error: MediaPlayer is not initialized.");
+            return null;
+        }
+        return player.currentTimeProperty();
+    }
+
+    // Get the total duration of the current media
+    public Duration getTotalDuration() {
+        return player != null ? player.getTotalDuration() : Duration.UNKNOWN;
+    }
+
+    // Dispose of the MediaPlayer resources
+    public void dispose() {
+        if (player != null) {
+            System.out.println("Disposing MediaPlayer resources...");
+            player.dispose();
+            player = null;
+        }
+    }
+
+    // Get the underlying MediaPlayer instance
+    public MediaPlayer getMediaPlayer() {
+        return player;
     }
 }
