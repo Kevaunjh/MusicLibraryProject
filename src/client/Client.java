@@ -14,37 +14,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Client extends Application {
-    private static Library musicLibrary; // RMI interface to the server
-    private static ObservableList<String> connectedPeers = FXCollections.observableArrayList(); // List for dynamic peer
-                                                                                                // updates
-    private static PeerInfoImpl peerInfo; // Client's peer information
-    private static Path personalDirectory; // Unique personal directory for the client
-    private static String peerAddress; // Unique client name
+    private static Library musicLibrary;
+    private static ObservableList<String> connectedPeers = FXCollections.observableArrayList();
+    private static PeerInfoImpl peerInfo;
+    private static Path personalDirectory;
+    private static String peerAddress;
 
     public static void main(String[] args) {
         try {
-            // Connect to the RMI server
             musicLibrary = (Library) Naming.lookup("//localhost/Library");
 
-            // Generate a unique client name
             peerAddress = "Client_" + System.currentTimeMillis();
-
-            // Ensure the personal directory is unique and uses the peer name
             personalDirectory = Path.of("./client", "client/" + peerAddress);
             Files.createDirectories(personalDirectory);
             System.out.println("Personal directory created at: " + personalDirectory);
 
-            // Get files from the client's directory to populate the playlist
             List<String> playlist = getFilesFromPersonalDirectory();
-
-            // Initialize this client's peer information
             peerInfo = new PeerInfoImpl(peerAddress, playlist);
-
-            // Register this client with the server
             musicLibrary.registerPeer(peerInfo);
             System.out.println("Client registered with name: " + peerAddress);
-
-            // Launch the GUI
             launch(args);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.getMessage());
@@ -54,12 +42,9 @@ public class Client extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        // Launch the GUI with dynamic peer updates and shared directory
-        MusicLibraryGUI gui = new MusicLibraryGUI(musicLibrary, connectedPeers, personalDirectory); // Pass
-                                                                                                    // personalDirectory
+        MusicLibraryGUI gui = new MusicLibraryGUI(musicLibrary, connectedPeers, personalDirectory);
         gui.start(primaryStage);
 
-        // Add a shutdown hook to deregister the client on exit
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 if (musicLibrary != null && peerInfo != null) {
@@ -89,10 +74,7 @@ public class Client extends Application {
 
     public static void refreshPeers() {
         try {
-            // Fetch the list of connected peers from the server
             List<String> peers = musicLibrary.getConnectedPeers();
-
-            // Update the observable list for the GUI
             connectedPeers.setAll(peers);
             System.out.println("Connected peers refreshed: " + peers);
         } catch (Exception e) {

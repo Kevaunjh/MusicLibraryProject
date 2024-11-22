@@ -11,7 +11,6 @@ public interface Library extends Remote {
 
     void deregisterPeer(PeerInfo peer) throws RemoteException;
 
-    // Add these methods
     List<String> searchSongs(String query) throws RemoteException;
 
     byte[] streamSong(String songName) throws RemoteException;

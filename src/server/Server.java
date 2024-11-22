@@ -6,10 +6,7 @@ import java.rmi.registry.LocateRegistry;
 public class Server {
     public static void main(String[] args) {
         try {
-            // Start the RMI registry on port 1099
             LocateRegistry.createRegistry(1099);
-
-            // Create and bind the RMIServer implementation
             RMIServerImpl musicLibrary = new RMIServerImpl();
             Naming.rebind("//localhost/Library", musicLibrary);
 

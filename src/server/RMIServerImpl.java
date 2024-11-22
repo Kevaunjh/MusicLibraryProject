@@ -21,7 +21,6 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
         songMetadata = new HashMap<>();
         songRatings = new HashMap<>();
 
-        // Example data
         songMetadata.put("song1.mp3", "Artist: Artist1, Album: Album1");
         songMetadata.put("song2.mp3", "Artist: Artist2, Album: Album2");
         songRatings.put("song1.mp3", 5);
@@ -49,7 +48,6 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
         return peerAddresses;
     }
 
-    // Implement the new methods
     @Override
     public List<String> searchSongs(String query) throws RemoteException {
         List<String> results = new ArrayList<>();
@@ -63,7 +61,6 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
 
     @Override
     public byte[] streamSong(String songName) throws RemoteException {
-        // Simulate streaming with a placeholder response
         System.out.println("Streaming song: " + songName);
         return songName.getBytes();
     }

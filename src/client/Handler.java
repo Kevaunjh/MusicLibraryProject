@@ -30,26 +30,21 @@ public class Handler {
             return;
         }
 
-        // Get the selected song from the list
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
-            // Check if the song is already downloaded
             if (downloadedSongs.contains(selectedSong)
                     || isFileAlreadyInDownloads(selectedSong, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
                 return;
             }
 
-            // Define source and target files
-            File sourceFile = new File("../Songs", selectedSong); // Assuming source is in `../Songs/`
+            File sourceFile = new File("../Songs", selectedSong);
             File targetFile = new File(currentClientDownloadsDirectory.toFile(), selectedSong);
 
             try {
-                // Copy the file to the downloads directory
                 Files.copy(sourceFile.toPath(), targetFile.toPath());
                 downloadedSongs.add(selectedSong);
 
-                // Show success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Download Successful");
                 successAlert.setHeaderText(null);
@@ -86,7 +81,6 @@ public class Handler {
     public void downloadFromCommunityPlaylist(String songName, Path communityPlaylistDirectory,
             Path currentClientDownloadsDirectory, ObservableList<String> downloadedSongs) {
         if (songName != null) {
-            // Check if the song is already in My Downloads
             if (downloadedSongs.contains(songName)
                     || isFileAlreadyInDownloads(songName, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
@@ -114,7 +108,6 @@ public class Handler {
         try {
             System.out.println("Downloading from peer: " + peerName);
 
-            // Construct the peer's directory path
             Path peerDirectory = Path.of("./client", "client/" + peerName);
             System.out.println("Peer directory path: " + peerDirectory);
 
@@ -123,7 +116,6 @@ public class Handler {
                 throw new IllegalArgumentException("The peer directory does not exist: " + peerDirectory);
             }
 
-            // Iterate over files in the peer's directory
             Files.list(peerDirectory)
                     .filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".mp3"))
@@ -131,17 +123,14 @@ public class Handler {
                         try {
                             String fileName = file.getFileName().toString();
 
-                            // Check if the file is already downloaded
                             if (downloadedSongs.contains(fileName) ||
                                     Files.exists(downloadsDirectory.resolve(fileName))) {
                                 System.out.println("File already exists in downloads: " + fileName);
-                                return; // Skip downloading the file
+                                return;
                             }
 
-                            // Define the target file in the downloads directory
                             Path targetFile = downloadsDirectory.resolve(fileName);
 
-                            // Copy the file to the downloads directory
                             Files.copy(file, targetFile);
                             downloadedSongs.add(fileName);
                             System.out.println("Downloaded: " + fileName);
@@ -237,7 +226,7 @@ public class Handler {
         }
     }
 
-    // Play selected song from the provided ListView
+
     public void playSelectedSong(ListView<String> songList) {
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {

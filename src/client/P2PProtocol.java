@@ -9,7 +9,6 @@ public class P2PProtocol {
     private final Map<String, InetSocketAddress> fileIndex = new ConcurrentHashMap<>();
     private final List<InetSocketAddress> peers = Collections.synchronizedList(new ArrayList<>());
 
-    // Register a peer and the files it hosts
     public synchronized void registerPeer(InetSocketAddress peer, List<String> files) {
         if (!peers.contains(peer)) {
             peers.add(peer);
@@ -21,12 +20,10 @@ public class P2PProtocol {
         }
     }
 
-    // Get a list of connected peers
     public List<InetSocketAddress> getPeers() {
         return new ArrayList<>(peers);
     }
 
-    // Discover a file and return the peer hosting it
     public InetSocketAddress discoverFile(String fileName) {
         InetSocketAddress peer = fileIndex.get(fileName);
         if (peer == null) {
@@ -37,20 +34,18 @@ public class P2PProtocol {
         return peer;
     }
 
-    // Download a file from either a local source or a peer
     public void downloadFile(InetSocketAddress sourcePeer, String fileName, String saveDirectory) {
         try {
             File saveDir = new File(saveDirectory);
             if (!saveDir.exists())
-                saveDir.mkdirs(); // Create the save directory if it doesn't exist
+                saveDir.mkdirs();
 
-            // Remove the first occurrence of "Songs/" from the path if present
             String sanitizedFileName = fileName.replaceFirst("^.*?Songs/", "");
 
-            File targetFile = new File(saveDir, sanitizedFileName); // Target file in the CurrentClientDownloads folder
+            File targetFile = new File(saveDir, sanitizedFileName);
 
-            if (sourcePeer == null) { // Local file download
-                File localFile = new File("../Songs/" + sanitizedFileName); // Use the sanitized path
+            if (sourcePeer == null) {
+                File localFile = new File("../Songs/" + sanitizedFileName);
                 if (!localFile.exists()) {
                     System.err.println("Error: File not found locally: " + localFile.getAbsolutePath());
                     return;
@@ -64,7 +59,7 @@ public class P2PProtocol {
                     }
                 }
                 System.out.println("File downloaded locally: " + targetFile.getAbsolutePath());
-            } else { // Peer-to-peer file download
+            } else {
                 try (Socket socket = new Socket(sourcePeer.getAddress(), sourcePeer.getPort());
                         InputStream is = socket.getInputStream();
                         OutputStream os = new FileOutputStream(targetFile)) {
@@ -81,8 +76,6 @@ public class P2PProtocol {
         }
     }
 
-    // Simulated method to act as a server to share files (peer-to-peer file
-    // serving)
     public void serveFiles(int port, String fileDirectory) {
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(port)) {

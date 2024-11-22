@@ -3,9 +3,9 @@ import java.net.*;
 import java.util.*;
 
 public class PeerNode {
-    private final InetSocketAddress address; // Address of this peer
+    private final InetSocketAddress address;
     private final P2PProtocol protocol;
-    private final List<String> localFiles; // Files hosted by this peer
+    private final List<String> localFiles;
 
     public PeerNode(InetSocketAddress address, P2PProtocol protocol) {
         this.address = address;
@@ -13,7 +13,6 @@ public class PeerNode {
         this.localFiles = new ArrayList<>();
     }
 
-    // Start the peer server to handle incoming file requests
     public void startServer() {
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(address.getPort())) {
@@ -29,13 +28,11 @@ public class PeerNode {
         }).start();
     }
 
-    // Register this peer with the protocol
     public void registerFiles() {
         protocol.registerPeer(address, localFiles);
         System.out.println("Files registered with the protocol: " + localFiles);
     }
 
-    // Add a file to the local repository
     public void addFile(String fileName) {
         File file = new File("Songs/" + fileName);
         if (file.exists()) {
@@ -47,7 +44,6 @@ public class PeerNode {
         }
     }
 
-    // Download a file from another peer
     public void downloadFile(String fileName) {
         InetSocketAddress sourcePeer = protocol.discoverFile(fileName);
         if (sourcePeer == null) {
@@ -70,12 +66,10 @@ public class PeerNode {
         }
     }
 
-    // Display the list of local files
     public void displayLocalFiles() {
         System.out.println("Local files hosted by this peer: " + localFiles);
     }
 
-    // Handler for incoming file requests
     private static class FileTransferHandler implements Runnable {
         private final Socket clientSocket;
         private final List<String> localFiles;

@@ -18,15 +18,14 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class MusicLibraryGUI extends Application {
-    private final Library musicLibrary; // RMI interface to the server
-    private final ObservableList<String> connectedPeers; // Observable list for dynamic peer updates
-    private final Handler handler = new Handler(); // Handler instance
-    private final ObservableList<String> songObservableList = FXCollections.observableArrayList(); // For Browse & Play
-    private final ObservableList<String> downloadedSongs = FXCollections.observableArrayList(); // For My Downloads
-    private final ObservableList<String> communityPlaylist = FXCollections.observableArrayList(); // For Community
-                                                                                                  // Playlist
-    private Path currentClientDownloadsDirectory; // Unique download directory for this client
-    private Path communityPlaylistDirectory; // Shared community playlist directory
+    private final Library musicLibrary;
+    private final ObservableList<String> connectedPeers;
+    private final Handler handler = new Handler();
+    private final ObservableList<String> songObservableList = FXCollections.observableArrayList();
+    private final ObservableList<String> downloadedSongs = FXCollections.observableArrayList();
+    private final ObservableList<String> communityPlaylist = FXCollections.observableArrayList();
+    private Path currentClientDownloadsDirectory;
+    private Path communityPlaylistDirectory;
 
     public MusicLibraryGUI(Library musicLibrary, ObservableList<String> connectedPeers,
             Path currentClientDownloadsDirectory) {
@@ -39,42 +38,88 @@ public class MusicLibraryGUI extends Application {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Music Library");
 
-        // Initialize directories
         if (!initializeClientDirectories()) {
             handler.showError("Initialization Error", "Failed to initialize client directories.");
             return;
         }
 
-        // Load songs into the observable list
         handler.loadSongs(songObservableList);
 
-        // Tab Pane for navigation
-        TabPane tabPane = new TabPane();
+        Tab browsePlayTab = createBrowsePlayTab();
+        Tab myDownloadsTab = createMyDownloadsTab();
+        Tab communityPlaylistTab = createCommunityPlaylistTab();
+        Tab myPeersTab = createMyPeersTab();
 
-        // Add tabs to the pane
-        tabPane.getTabs().add(createBrowsePlayTab());
-        tabPane.getTabs().add(createMyDownloadsTab());
-        tabPane.getTabs().add(createCommunityPlaylistTab());
-        tabPane.getTabs().add(createMyPeersTab());
+        TabPane tabPane = new TabPane(browsePlayTab, myDownloadsTab, communityPlaylistTab, myPeersTab);
+        tabPane.setTabMinWidth(0);
+        tabPane.setTabMaxWidth(0);
+        tabPane.setTabMinHeight(0);
+        tabPane.setTabMaxHeight(0);
+        tabPane.setStyle("-fx-background-color: #3d3d3d;");
 
-        // Set up the main scene
-        Scene scene = new Scene(tabPane, 800, 600);
+        Button browsePlayButton = new Button("Browse & Play");
+        Button myDownloadsButton = new Button("My Downloads");
+        Button communityPlaylistButton = new Button("Community Playlist");
+        Button myPeersButton = new Button("My Peers");
+
+        String buttonStyle = "-fx-font-size: 16px; -fx-text-fill: white; -fx-background-color: #2b2b2b; -fx-padding: 10;";
+        String buttonHoverStyle = "-fx-font-size: 16px; -fx-text-fill: white; -fx-background-color: #404040; -fx-padding: 10;";
+        browsePlayButton.setStyle(buttonStyle);
+        myDownloadsButton.setStyle(buttonStyle);
+        communityPlaylistButton.setStyle(buttonStyle);
+        myPeersButton.setStyle(buttonStyle);
+
+        addHoverEffect(browsePlayButton, buttonStyle, buttonHoverStyle);
+        addHoverEffect(myDownloadsButton, buttonStyle, buttonHoverStyle);
+        addHoverEffect(communityPlaylistButton, buttonStyle, buttonHoverStyle);
+        addHoverEffect(myPeersButton, buttonStyle, buttonHoverStyle);
+
+        browsePlayButton.setMaxWidth(Double.MAX_VALUE);
+        myDownloadsButton.setMaxWidth(Double.MAX_VALUE);
+        communityPlaylistButton.setMaxWidth(Double.MAX_VALUE);
+        myPeersButton.setMaxWidth(Double.MAX_VALUE);
+
+        browsePlayButton.setOnAction(e -> tabPane.getSelectionModel().select(browsePlayTab));
+        myDownloadsButton.setOnAction(e -> tabPane.getSelectionModel().select(myDownloadsTab));
+        communityPlaylistButton.setOnAction(e -> tabPane.getSelectionModel().select(communityPlaylistTab));
+        myPeersButton.setOnAction(e -> tabPane.getSelectionModel().select(myPeersTab));
+
+        VBox tabButtonBox = new VBox(10, browsePlayButton, myDownloadsButton, communityPlaylistButton, myPeersButton);
+        tabButtonBox.setPadding(new Insets(0));
+        tabButtonBox.setSpacing(10);
+        tabButtonBox.setStyle("-fx-background-color: #2b2b2b;");
+        tabButtonBox.setAlignment(Pos.TOP_CENTER);
+
+        VBox.setVgrow(browsePlayButton, Priority.ALWAYS);
+        VBox.setVgrow(myDownloadsButton, Priority.ALWAYS);
+        VBox.setVgrow(communityPlaylistButton, Priority.ALWAYS);
+        VBox.setVgrow(myPeersButton, Priority.ALWAYS);
+
+        BorderPane mainLayout = new BorderPane();
+        mainLayout.setLeft(tabButtonBox);
+        mainLayout.setCenter(tabPane);
+        BorderPane.setMargin(tabPane, Insets.EMPTY);
+
+        Scene scene = new Scene(mainLayout, 800, 600);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
+    private void addHoverEffect(Button button, String normalStyle, String hoverStyle) {
+        button.setOnMouseEntered(e -> button.setStyle(hoverStyle));
+        button.setOnMouseExited(e -> button.setStyle(normalStyle));
+    }
+
     private boolean initializeClientDirectories() {
         try {
-            // Use the directory passed from the Client class
+
             if (currentClientDownloadsDirectory == null || !Files.exists(currentClientDownloadsDirectory)) {
                 throw new IllegalStateException("Client downloads directory is not initialized or does not exist.");
             }
 
-            // Set up the shared community playlist directory
             communityPlaylistDirectory = Path.of("../server/Playlist");
             Files.createDirectories(communityPlaylistDirectory);
 
-            // Load community playlist into the observable list
             handler.loadCommunityPlaylist(communityPlaylistDirectory, communityPlaylist);
             return true;
         } catch (Exception e) {
@@ -89,7 +134,9 @@ public class MusicLibraryGUI extends Application {
         playbackLayout.setAlignment(Pos.CENTER);
         playbackLayout.setPadding(new Insets(10));
 
-        // Filtered list for dynamic searching
+        Label title = new Label("Browse and Listen");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: white;");
+
         FilteredList<String> filteredSongs = new FilteredList<>(songObservableList, p -> true);
         ListView<String> songList = new ListView<>(filteredSongs);
 
@@ -98,49 +145,51 @@ public class MusicLibraryGUI extends Application {
         searchField.textProperty().addListener((obs, oldText, newText) -> filteredSongs
                 .setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase())));
 
-        // Slider for song progress
         Slider progressSlider = new Slider();
         progressSlider.setMin(0);
         progressSlider.setMax(1);
         progressSlider.setValue(0);
-        progressSlider.setDisable(true); // Initially disabled
+        progressSlider.setDisable(true);
+        progressSlider.setStyle(
+                "-fx-control-inner-background: green; -fx-thumb-background: #d94e7b;");
 
-        // Label to display x/y format
         Label timeLabel = new Label("0:00 / 0:00");
-        timeLabel.setStyle("-fx-font-size: 12px;");
+        timeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: white;");
 
         Button playButton = new Button("▶ Play");
         Button pauseButton = new Button("⏸ Pause");
         Button stopButton = new Button("⏹ Stop");
         Button downloadButton = new Button("Download");
 
+        String buttonStyle = "-fx-background-color: #d94e7b; -fx-text-fill: white; -fx-font-size: 14px;";
+        playButton.setStyle(buttonStyle);
+        pauseButton.setStyle(buttonStyle);
+        stopButton.setStyle(buttonStyle);
+        downloadButton.setStyle(buttonStyle);
+
         playButton.setOnAction(e -> {
             handler.playSelectedSong(songList);
 
             if (handler.getPlayer() != null) {
-                progressSlider.setDisable(false); // Enable the slider
-                progressSlider.setValue(0); // Reset slider to start
+                progressSlider.setDisable(false);
+                progressSlider.setValue(0);
 
-                // Wait for the MediaPlayer to be ready
                 handler.getPlayer().getMediaPlayer().setOnReady(() -> {
                     System.out.println("MediaPlayer is ready. Starting playback...");
 
-                    // Set the slider's maximum to the total duration of the song
                     progressSlider.setMax(handler.getPlayer().getTotalDuration().toSeconds());
                     timeLabel.setText("0:00 / " + formatTime(handler.getPlayer().getTotalDuration()));
 
-                    // Update slider and time label as the song progresses
                     handler.getPlayer().currentTimeProperty().addListener((obs, oldTime, newTime) -> {
-                        if (!progressSlider.isValueChanging()) { // Avoid conflicts while dragging
+                        if (!progressSlider.isValueChanging()) {
                             progressSlider.setValue(newTime.toSeconds());
                         }
 
-                        // Update the time label with current and total duration
                         timeLabel.setText(
                                 formatTime(newTime) + " / " + formatTime(handler.getPlayer().getTotalDuration()));
                     });
 
-                    handler.getPlayer().play(); // Play the song once ready
+                    handler.getPlayer().play();
                 });
             }
         });
@@ -164,18 +213,16 @@ public class MusicLibraryGUI extends Application {
             handler.downloadSelectedSong(songList, currentClientDownloadsDirectory, downloadedSongs);
         });
 
-        // Handle slider interaction (drag or click)
         progressSlider.valueChangingProperty().addListener((obs, wasChanging, isNowChanging) -> {
-            if (!isNowChanging) { // User finished dragging
+            if (!isNowChanging) {
                 if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
                     Duration seekTime = Duration.seconds(progressSlider.getValue());
-                    handler.getPlayer().seek(seekTime); // Seek to the selected time
+                    handler.getPlayer().seek(seekTime);
                     System.out.println("Seeking to: " + formatTime(seekTime));
                 }
             }
         });
 
-        // Handle slider tap to seek
         progressSlider.setOnMousePressed(event -> {
             if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
                 double mouseX = event.getX();
@@ -183,9 +230,9 @@ public class MusicLibraryGUI extends Application {
                 double percent = mouseX / sliderWidth;
                 double seekTimeInSeconds = percent * progressSlider.getMax();
 
-                progressSlider.setValue(seekTimeInSeconds); // Update slider value
+                progressSlider.setValue(seekTimeInSeconds);
                 Duration seekTime = Duration.seconds(seekTimeInSeconds);
-                handler.getPlayer().seek(seekTime); // Seek to the selected time
+                handler.getPlayer().seek(seekTime);
                 System.out.println("Tapped slider, seeking to: " + formatTime(seekTime));
             }
         });
@@ -193,7 +240,7 @@ public class MusicLibraryGUI extends Application {
         HBox controls = new HBox(10, playButton, pauseButton, stopButton, downloadButton);
         controls.setAlignment(Pos.CENTER);
 
-        playbackLayout.getChildren().addAll(searchField, songList, progressSlider, timeLabel, controls);
+        playbackLayout.getChildren().addAll(title, searchField, songList, progressSlider, timeLabel, controls);
 
         Tab browseTab = new Tab("Browse & Play", playbackLayout);
         browseTab.setClosable(false);
@@ -214,7 +261,9 @@ public class MusicLibraryGUI extends Application {
         downloadsLayout.setAlignment(Pos.CENTER);
         downloadsLayout.setPadding(new Insets(10));
 
-        // Filtered list for searching downloads
+        Label title = new Label("My Downloads");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: white;");
+
         FilteredList<String> filteredDownloads = new FilteredList<>(downloadedSongs, p -> true);
         ListView<String> downloadsList = new ListView<>(filteredDownloads);
 
@@ -223,26 +272,107 @@ public class MusicLibraryGUI extends Application {
         searchField.textProperty().addListener((obs, oldText, newText) -> filteredDownloads
                 .setPredicate(song -> song.toLowerCase().contains(newText.toLowerCase())));
 
+        Slider progressSlider = new Slider();
+        progressSlider.setMin(0);
+        progressSlider.setMax(1);
+        progressSlider.setValue(0);
+        progressSlider.setDisable(true);
+        progressSlider.setStyle(
+                "-fx-control-inner-background: green; -fx-thumb-background: #d94e7b;");
+
+        Label timeLabel = new Label("0:00 / 0:00");
+        timeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: white;");
+
         Button playDownloadedButton = new Button("▶ Play");
         Button pauseDownloadedButton = new Button("⏸ Pause");
         Button stopDownloadedButton = new Button("⏹ Stop");
         Button addToPlaylistButton = new Button("+ Add to Playlist");
 
-        playDownloadedButton
-                .setOnAction(e -> handler.playSelectedDownloadedSong(downloadsList, currentClientDownloadsDirectory));
-        pauseDownloadedButton.setOnAction(e -> handler.getPlayer().pause());
-        stopDownloadedButton.setOnAction(e -> handler.getPlayer().stop());
-        addToPlaylistButton.setOnAction(e -> handler.addToCommunityPlaylist(
-                downloadsList.getSelectionModel().getSelectedItem(),
-                currentClientDownloadsDirectory,
-                communityPlaylistDirectory,
-                communityPlaylist));
+        String buttonStyle = "-fx-background-color: #d94e7b; -fx-text-fill: white; -fx-font-size: 14px;";
+        playDownloadedButton.setStyle(buttonStyle);
+        pauseDownloadedButton.setStyle(buttonStyle);
+        stopDownloadedButton.setStyle(buttonStyle);
+        addToPlaylistButton.setStyle(buttonStyle);
+
+        playDownloadedButton.setOnAction(e -> {
+            handler.playSelectedDownloadedSong(downloadsList, currentClientDownloadsDirectory);
+
+            if (handler.getPlayer() != null) {
+                progressSlider.setDisable(false);
+                progressSlider.setValue(0);
+
+                handler.getPlayer().getMediaPlayer().setOnReady(() -> {
+                    System.out.println("MediaPlayer is ready. Starting playback...");
+
+                    progressSlider.setMax(handler.getPlayer().getTotalDuration().toSeconds());
+                    timeLabel.setText("0:00 / " + formatTime(handler.getPlayer().getTotalDuration()));
+
+                    handler.getPlayer().currentTimeProperty().addListener((obs, oldTime, newTime) -> {
+                        if (!progressSlider.isValueChanging()) {
+                            progressSlider.setValue(newTime.toSeconds());
+                        }
+                        timeLabel.setText(
+                                formatTime(newTime) + " / " + formatTime(handler.getPlayer().getTotalDuration()));
+                    });
+
+                    handler.getPlayer().play();
+                });
+            }
+        });
+
+        pauseDownloadedButton.setOnAction(e -> {
+            if (handler.getPlayer() != null) {
+                handler.getPlayer().pause();
+            }
+        });
+
+        stopDownloadedButton.setOnAction(e -> {
+            if (handler.getPlayer() != null) {
+                handler.getPlayer().stop();
+            }
+            progressSlider.setValue(0);
+            progressSlider.setDisable(true);
+            timeLabel.setText("0:00 / 0:00");
+        });
+
+        addToPlaylistButton.setOnAction(e -> {
+            handler.addToCommunityPlaylist(
+                    downloadsList.getSelectionModel().getSelectedItem(),
+                    currentClientDownloadsDirectory,
+                    communityPlaylistDirectory,
+                    communityPlaylist);
+        });
+
+        progressSlider.valueChangingProperty().addListener((obs, wasChanging, isNowChanging) -> {
+            if (!isNowChanging) {
+                if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
+                    Duration seekTime = Duration.seconds(progressSlider.getValue());
+                    handler.getPlayer().seek(seekTime);
+                    System.out.println("Seeking to: " + formatTime(seekTime));
+                }
+            }
+        });
+
+        progressSlider.setOnMousePressed(event -> {
+            if (handler.getPlayer() != null && handler.getPlayer().getMediaPlayer() != null) {
+                double mouseX = event.getX();
+                double sliderWidth = progressSlider.getWidth();
+                double percent = mouseX / sliderWidth;
+                double seekTimeInSeconds = percent * progressSlider.getMax();
+
+                progressSlider.setValue(seekTimeInSeconds);
+                Duration seekTime = Duration.seconds(seekTimeInSeconds);
+                handler.getPlayer().seek(seekTime);
+                System.out.println("Tapped slider, seeking to: " + formatTime(seekTime));
+            }
+        });
 
         HBox downloadsControls = new HBox(10, playDownloadedButton, pauseDownloadedButton, stopDownloadedButton,
                 addToPlaylistButton);
         downloadsControls.setAlignment(Pos.CENTER);
 
-        downloadsLayout.getChildren().addAll(searchField, downloadsList, downloadsControls);
+        downloadsLayout.getChildren().addAll(title, searchField, downloadsList, progressSlider, timeLabel,
+                downloadsControls);
 
         Tab downloadsTab = new Tab("My Downloads", downloadsLayout);
         downloadsTab.setClosable(false);
@@ -254,7 +384,9 @@ public class MusicLibraryGUI extends Application {
         communityLayout.setAlignment(Pos.CENTER);
         communityLayout.setPadding(new Insets(10));
 
-        // Filtered list for searching the community playlist
+        Label title = new Label("Community Playlist");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: white;");
+
         FilteredList<String> filteredCommunity = new FilteredList<>(communityPlaylist, p -> true);
         ListView<String> communityListView = new ListView<>(filteredCommunity);
 
@@ -265,6 +397,10 @@ public class MusicLibraryGUI extends Application {
 
         Button downloadFromPlaylistButton = new Button("Download from Playlist");
         Button removeFromPlaylistButton = new Button("Remove from Playlist");
+
+        String buttonStyle = "-fx-background-color: #d94e7b; -fx-text-fill: white; -fx-font-size: 14px;";
+        downloadFromPlaylistButton.setStyle(buttonStyle);
+        removeFromPlaylistButton.setStyle(buttonStyle);
 
         downloadFromPlaylistButton.setOnAction(e -> handler.downloadFromCommunityPlaylist(
                 communityListView.getSelectionModel().getSelectedItem(),
@@ -280,7 +416,7 @@ public class MusicLibraryGUI extends Application {
         HBox communityControls = new HBox(10, downloadFromPlaylistButton, removeFromPlaylistButton);
         communityControls.setAlignment(Pos.CENTER);
 
-        communityLayout.getChildren().addAll(searchField, communityListView, communityControls);
+        communityLayout.getChildren().addAll(title, searchField, communityListView, communityControls);
 
         Tab communityTab = new Tab("Community Playlist", communityLayout);
         communityTab.setClosable(false);
@@ -292,6 +428,9 @@ public class MusicLibraryGUI extends Application {
         peersLayout.setAlignment(Pos.CENTER);
         peersLayout.setPadding(new Insets(10));
 
+        Label title = new Label("My Peers");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: white;");
+
         ListView<String> peersListView = new ListView<>(connectedPeers);
 
         TextField searchField = new TextField();
@@ -301,6 +440,10 @@ public class MusicLibraryGUI extends Application {
 
         Button refreshPeersButton = new Button("Refresh Peers");
         Button downloadFromPeerButton = new Button("Download Songs from Peer");
+
+        String buttonStyle = "-fx-background-color: #d94e7b; -fx-text-fill: white; -fx-font-size: 14px;";
+        refreshPeersButton.setStyle(buttonStyle);
+        downloadFromPeerButton.setStyle(buttonStyle);
 
         refreshPeersButton.setOnAction(e -> {
             try {
@@ -314,7 +457,7 @@ public class MusicLibraryGUI extends Application {
         downloadFromPeerButton.setOnAction(e -> {
             String selectedPeer = peersListView.getSelectionModel().getSelectedItem();
             if (selectedPeer != null) {
-                System.out.println("Selected peer: " + selectedPeer); // Debug log
+                System.out.println("Selected peer: " + selectedPeer);
                 handler.downloadFromPeer(selectedPeer, currentClientDownloadsDirectory, downloadedSongs);
             } else {
                 showError("No Peer Selected", "Please select a peer to download from.");
@@ -324,7 +467,7 @@ public class MusicLibraryGUI extends Application {
         HBox peersControls = new HBox(10, refreshPeersButton, downloadFromPeerButton);
         peersControls.setAlignment(Pos.CENTER);
 
-        peersLayout.getChildren().addAll(searchField, peersListView, peersControls);
+        peersLayout.getChildren().addAll(title, searchField, peersListView, peersControls);
 
         Tab peersTab = new Tab("My Peers", peersLayout);
         peersTab.setClosable(false);
