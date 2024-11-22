@@ -1,73 +1,80 @@
-import java.rmi.Naming;
-import java.util.Scanner;
+package client;
 
-public class Client {
+import common.Library;
+import common.PeerInfo;
+import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.stage.Stage;
+
+import java.rmi.Naming;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Client extends Application {
+    private static Library musicLibrary; // RMI interface to the server
+    private static ObservableList<String> connectedPeers = FXCollections.observableArrayList(); // List for dynamic peer
+                                                                                                // updates
+    private static PeerInfoImpl peerInfo; // Client's peer information
+
     public static void main(String[] args) {
         try {
-            Library musicLibrary = (Library) Naming.lookup("//localhost/Library");
+            // Connect to the RMI server
+            musicLibrary = (Library) Naming.lookup("//localhost/Library");
 
-            try (Scanner scanner = new Scanner(System.in)) {
-                System.out.println("Welcome to the Music Library");
-                System.out.println("1. Search Songs");
-                System.out.println("2. Stream Song");
-                System.out.println("3. Upload Song");
-                System.out.println("4. Get Song Metadata");
-                System.out.println("5. Rate Song");
-                System.out.println("6. Exit");
+            String peerAddress = "localhost"; 
+            List<String> playlist = new ArrayList<>();
+            playlist.add("song1.mp3");
+            playlist.add("song2.mp3");
+            peerInfo = new PeerInfoImpl(peerAddress, playlist);
 
-                while (true) {
-                    System.out.print("Enter your choice: ");
-                    int choice = scanner.nextInt();
-                    scanner.nextLine();
+            // Register this client with the server
+            musicLibrary.registerPeer(peerInfo);
 
-                    switch (choice) {
-                        case 1:
-                            System.out.print("Enter search query: ");
-                            String query = scanner.nextLine();
-                            System.out.println("Search results: " + musicLibrary.searchSongs(query));
-                            break;
-
-                        case 2:
-                            System.out.print("Enter song name: ");
-                            String songName = scanner.nextLine();
-                            byte[] data = musicLibrary.streamSong(songName);
-                            System.out.println("Song streamed successfully: " + songName);
-                            break;
-
-                        case 3:
-                            System.out.print("Enter song name: ");
-                            String uploadName = scanner.nextLine();
-                            System.out.println("Feature not implemented in CLI!");
-                            break;
-
-                        case 4:
-                            System.out.print("Enter song name: ");
-                            String metaName = scanner.nextLine();
-                            System.out.println("Metadata: " + musicLibrary.getSongMetadata(metaName));
-                            break;
-
-                        case 5:
-                            System.out.print("Enter song name to rate: ");
-                            String rateName = scanner.nextLine();
-                            System.out.print("Enter your rating (1-5): ");
-                            int rating = scanner.nextInt();
-                            scanner.nextLine();
-                            musicLibrary.rateSong(rateName, rating);
-                            System.out.println("Rated successfully.");
-                            break;
-
-                        case 6:
-                            System.out.println("Exiting...");
-                            return;
-
-                        default:
-                            System.out.println("Invalid choice!");
-                    }
-                }
-            }
+            // Launch the GUI
+            launch(args);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        // Launch the GUI with dynamic peer updates
+        MusicLibraryGUI gui = new MusicLibraryGUI(musicLibrary, connectedPeers);
+        gui.start(primaryStage);
+
+        // Start a background thread to refresh peers
+        new Thread(this::refreshPeers).start();
+
+        // Add a shutdown hook to deregister the client on exit
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                if (musicLibrary != null && peerInfo != null) {
+                    musicLibrary.deregisterPeer(peerInfo);
+                    System.out.println("Client deregistered from the server.");
+                }
+            } catch (Exception e) {
+                System.err.println("Error during deregistration: " + e.getMessage());
+            }
+        }));
+    }
+
+    private void refreshPeers() {
+        while (true) {
+            try {
+                // Fetch the list of connected peers from the server
+                List<String> peers = musicLibrary.getConnectedPeers();
+
+                // Update the observable list for the GUI
+                connectedPeers.setAll(peers);
+
+                // Sleep for 5 seconds before refreshing again
+                Thread.sleep(5000);
+            } catch (Exception e) {
+                System.err.println("Error refreshing peers: " + e.getMessage());
+            }
         }
     }
 }

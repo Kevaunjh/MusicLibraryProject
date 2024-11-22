@@ -1,3 +1,5 @@
+package client;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -48,7 +50,7 @@ public class P2PProtocol {
             File targetFile = new File(saveDir, sanitizedFileName); // Target file in the CurrentClientDownloads folder
 
             if (sourcePeer == null) { // Local file download
-                File localFile = new File("../../Songs/" + sanitizedFileName); // Use the sanitized path
+                File localFile = new File("../Songs/" + sanitizedFileName); // Use the sanitized path
                 if (!localFile.exists()) {
                     System.err.println("Error: File not found locally: " + localFile.getAbsolutePath());
                     return;

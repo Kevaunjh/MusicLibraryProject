@@ -1,3 +1,5 @@
+package client;
+
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ListView;
@@ -16,20 +18,6 @@ public class Handler {
         return player;
     }
 
-    public void loadSongs(ListView<String> songList) {
-        File downloadsDir = new File("../../Downloads");
-        if (downloadsDir.exists() && downloadsDir.isDirectory()) {
-            File[] files = downloadsDir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.getName().endsWith(".mp3")) {
-                        songList.getItems().add(file.getName());
-                    }
-                }
-            }
-        }
-    }
-
     private boolean isFileAlreadyInDownloads(String fileName, Path downloadsDirectory) {
         File targetFile = new File(downloadsDirectory.toFile(), fileName);
         return targetFile.exists();
@@ -37,16 +25,19 @@ public class Handler {
 
     public void downloadSelectedSong(ListView<String> songList, Path currentClientDownloadsDirectory,
             ObservableList<String> downloadedSongs) {
+        if (currentClientDownloadsDirectory == null) {
+            showError("Download Directory Not Set", "The download directory is not initialized.");
+            return;
+        }
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
-            // Check if the song is already in My Downloads
             if (downloadedSongs.contains(selectedSong)
                     || isFileAlreadyInDownloads(selectedSong, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
                 return;
             }
 
-            String sourcePath = "../../Songs/" + selectedSong;
+            String sourcePath = "../Songs/" + selectedSong;
             protocol.downloadFile(null, sourcePath, currentClientDownloadsDirectory.toString());
             File downloadedFile = new File(currentClientDownloadsDirectory.toFile(), selectedSong);
             if (downloadedFile.exists()) {
@@ -64,16 +55,21 @@ public class Handler {
     }
 
     public void loadSongs(ObservableList<String> songList) {
-        File downloadsDir = new File("../../Downloads");
+        File downloadsDir = new File("../Downloads");
         if (downloadsDir.exists() && downloadsDir.isDirectory()) {
             File[] files = downloadsDir.listFiles();
             if (files != null) {
                 for (File file : files) {
                     if (file.getName().endsWith(".mp3")) {
                         songList.add(file.getName());
+                        System.out.println("Loaded song: " + file.getName());
                     }
                 }
+            } else {
+                System.out.println("No files found in the directory.");
             }
+        } else {
+            System.out.println("Directory does not exist: " + downloadsDir.getAbsolutePath());
         }
     }
 
@@ -210,7 +206,7 @@ public class Handler {
     public void playSelectedSong(ListView<String> songList) {
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
-            String filePath = "../../Downloads/" + selectedSong;
+            String filePath = "../Downloads/" + selectedSong;
             File songFile = new File(filePath);
             if (songFile.exists()) {
                 player.loadSong(filePath);

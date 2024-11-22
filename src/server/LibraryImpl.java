@@ -24,7 +24,7 @@ public class LibraryImpl extends UnicastRemoteObject implements Library {
             if (song.isFile() && song.getName().endsWith(".mp3")) {
                 songs.put(song.getName(), song);
                 metadata.put(song.getName(), "Artist: Unknown, Album: Unknown, Duration: Unknown");
-                System.out.println("Loaded song: " + song.getName()); 
+                System.out.println("Loaded song: " + song.getName());
             }
         }
     }
