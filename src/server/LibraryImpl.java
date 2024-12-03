@@ -3,23 +3,32 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
+/**
+ * Implementation of the Library interface for managing a music library.
+ * Extends UnicastRemoteObject to support remote method invocation (RMI).
+ */
 public class LibraryImpl extends UnicastRemoteObject implements Library {
-    private Map<String, File> songs = new HashMap<>();
-    private Map<String, List<Integer>> ratings = new HashMap<>();
-    private Map<String, String> metadata = new HashMap<>();
+    private Map<String, File> songs = new HashMap<>(); // Map to store song names and their corresponding File objects.
+    private Map<String, List<Integer>> ratings = new HashMap<>(); // Map to store ratings for each song.
+    private Map<String, String> metadata = new HashMap<>(); // Map to store metadata information for each song.
 
+    // Constructor that initializes the LibraryImpl instance and loads existing songs from the "Songs" directory.
     public LibraryImpl() throws RemoteException {
         super();
-        loadSongs();
+        loadSongs(); // Load songs from the "Songs" directory during initialization.
     }
 
+    /**
+     * Loads songs from the "Songs" directory into the songs map.
+     */
     private void loadSongs() {
         File songDir = new File("Songs");
         if (!songDir.exists()) {
-            songDir.mkdir();
+            songDir.mkdir(); // Create the "Songs" directory if it doesn't exist.
             System.out.println("Songs directory created.");
         }
 
+        // Iterate through files in the directory and add them to the songs map if they are .mp3 files.
         for (File song : songDir.listFiles()) {
             if (song.isFile() && song.getName().endsWith(".mp3")) {
                 songs.put(song.getName(), song);
@@ -86,6 +95,7 @@ public class LibraryImpl extends UnicastRemoteObject implements Library {
         ratings.putIfAbsent(songName, new ArrayList<>());
         ratings.get(songName).add(rating);
 
+        // Calculate the average rating and update the metadata.
         double average = ratings.get(songName).stream().mapToInt(Integer::intValue).average().orElse(0);
         metadata.put(songName, metadata.get(songName) + ", Average Rating: " + String.format("%.2f", average));
         return true;

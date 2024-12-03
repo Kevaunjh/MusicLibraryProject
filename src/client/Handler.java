@@ -11,18 +11,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Handler {
+    // Instance variables for music player and protocol handling
     private final MusicPlayer player = new MusicPlayer();
     private final P2PProtocol protocol = new P2PProtocol();
 
+    // Getter for the music player instance
     public MusicPlayer getPlayer() {
         return player;
     }
 
+    // Helper method to check if a file is already in the downloads directory
     private boolean isFileAlreadyInDownloads(String fileName, Path downloadsDirectory) {
         File targetFile = new File(downloadsDirectory.toFile(), fileName);
         return targetFile.exists();
     }
 
+    // Method to download a selected song from the song list
     public void downloadSelectedSong(ListView<String> songList, Path currentClientDownloadsDirectory,
             ObservableList<String> downloadedSongs) {
         if (currentClientDownloadsDirectory == null) {
@@ -32,25 +36,30 @@ public class Handler {
 
         String selectedSong = songList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
+            // Check for duplicate downloads
             if (downloadedSongs.contains(selectedSong)
                     || isFileAlreadyInDownloads(selectedSong, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
                 return;
             }
 
+            // Set source and target files
             File sourceFile = new File("../Songs", selectedSong);
             File targetFile = new File(currentClientDownloadsDirectory.toFile(), selectedSong);
 
             try {
+                // Copy the selected song to the target download directory
                 Files.copy(sourceFile.toPath(), targetFile.toPath());
                 downloadedSongs.add(selectedSong);
 
+                // Display success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Download Successful");
                 successAlert.setHeaderText(null);
                 successAlert.setContentText("File downloaded to My Downloads: " + selectedSong);
                 successAlert.showAndWait();
             } catch (Exception e) {
+                // Display error alert if download fails
                 showError("Download Failed", "The file could not be downloaded: " + e.getMessage());
                 e.printStackTrace();
             }
@@ -59,11 +68,13 @@ public class Handler {
         }
     }
 
+    // Method to load songs from the downloads directory into the song list
     public void loadSongs(ObservableList<String> songList) {
         File downloadsDir = new File("../Downloads");
         if (downloadsDir.exists() && downloadsDir.isDirectory()) {
             File[] files = downloadsDir.listFiles();
             if (files != null) {
+                // Add all .mp3 files to the song list
                 for (File file : files) {
                     if (file.getName().endsWith(".mp3")) {
                         songList.add(file.getName());
@@ -78,9 +89,11 @@ public class Handler {
         }
     }
 
+    // Method to download a song from the community playlist
     public void downloadFromCommunityPlaylist(String songName, Path communityPlaylistDirectory,
             Path currentClientDownloadsDirectory, ObservableList<String> downloadedSongs) {
         if (songName != null) {
+            // Check for duplicate downloads
             if (downloadedSongs.contains(songName)
                     || isFileAlreadyInDownloads(songName, currentClientDownloadsDirectory)) {
                 showError("Duplicate Download", "This song is already in My Downloads.");
@@ -90,8 +103,11 @@ public class Handler {
             File sourceFile = new File(communityPlaylistDirectory.toFile(), songName);
             File targetFile = new File(currentClientDownloadsDirectory.toFile(), songName);
             try {
+                // Copy the song from the community playlist to the download directory
                 Files.copy(sourceFile.toPath(), targetFile.toPath());
                 downloadedSongs.add(songName);
+
+                // Display success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Download Successful");
                 successAlert.setContentText(songName + " downloaded to My Downloads.");
@@ -104,6 +120,7 @@ public class Handler {
         }
     }
 
+    // Method to download songs from a peer's directory
     public void downloadFromPeer(String peerName, Path downloadsDirectory, ObservableList<String> downloadedSongs) {
         try {
             System.out.println("Downloading from peer: " + peerName);
@@ -111,11 +128,13 @@ public class Handler {
             Path peerDirectory = Path.of("./client", "client/" + peerName);
             System.out.println("Peer directory path: " + peerDirectory);
 
+            // Check if the peer directory exists
             if (!Files.exists(peerDirectory) || !Files.isDirectory(peerDirectory)) {
                 System.out.println("Peer directory does not exist: " + peerDirectory);
                 throw new IllegalArgumentException("The peer directory does not exist: " + peerDirectory);
             }
 
+            // Iterate over all .mp3 files in the peer directory and copy them
             Files.list(peerDirectory)
                     .filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".mp3"))
@@ -123,6 +142,7 @@ public class Handler {
                         try {
                             String fileName = file.getFileName().toString();
 
+                            // Check if the file already exists in the downloads directory
                             if (downloadedSongs.contains(fileName) ||
                                     Files.exists(downloadsDirectory.resolve(fileName))) {
                                 System.out.println("File already exists in downloads: " + fileName);
@@ -145,6 +165,7 @@ public class Handler {
         }
     }
 
+    // Method to add a song to the community playlist
     public void addToCommunityPlaylist(String songName, Path currentClientDownloadsDirectory,
             Path communityPlaylistDirectory, ObservableList<String> communityPlaylist) {
         if (songName != null) {
@@ -156,8 +177,11 @@ public class Handler {
             File sourceFile = new File(currentClientDownloadsDirectory.toString(), songName);
             File targetFile = new File(communityPlaylistDirectory.toFile(), songName);
             try {
+                // Copy the song to the community playlist directory
                 Files.copy(sourceFile.toPath(), targetFile.toPath());
                 communityPlaylist.add(songName);
+
+                // Display success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Playlist Updated");
                 successAlert.setContentText(songName + " added to the Community Playlist.");
@@ -170,6 +194,7 @@ public class Handler {
         }
     }
 
+    // Method to remove a song from the community playlist
     public void removeFromCommunityPlaylist(String songName, Path communityPlaylistDirectory,
             ObservableList<String> communityPlaylist) {
         if (songName != null) {
@@ -177,6 +202,8 @@ public class Handler {
             if (targetFile.exists()) {
                 targetFile.delete();
                 communityPlaylist.remove(songName);
+
+                // Display success alert
                 Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                 successAlert.setTitle("Playlist Updated");
                 successAlert.setContentText(songName + " removed from the Community Playlist.");
@@ -189,6 +216,7 @@ public class Handler {
         }
     }
 
+    // Method to play the selected song from the downloads list
     public void playSelectedDownloadedSong(ListView<String> downloadsList, Path currentClientDownloadsDirectory) {
         String selectedSong = downloadsList.getSelectionModel().getSelectedItem();
         if (selectedSong != null) {
@@ -205,6 +233,7 @@ public class Handler {
         }
     }
 
+    // Method to refresh the list of connected peers
     public void refreshPeerList(ObservableList<String> connectedPeers) {
         connectedPeers.clear();
         for (InetSocketAddress peer : protocol.getPeers()) {
@@ -212,42 +241,25 @@ public class Handler {
         }
     }
 
+    // Method to load songs from the community playlist directory
     public void loadCommunityPlaylist(Path communityPlaylistDirectory, ObservableList<String> communityPlaylist) {
-        File communityDir = communityPlaylistDirectory.toFile();
-        if (communityDir.exists() && communityDir.isDirectory()) {
-            File[] files = communityDir.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.getName().endsWith(".mp3")) {
-                        communityPlaylist.add(file.getName());
-                    }
-                }
-            }
+        try {
+            Files.list(communityPlaylistDirectory)
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".mp3"))
+                    .forEach(file -> communityPlaylist.add(file.getFileName().toString()));
+        } catch (IOException e) {
+            System.err.println("Error loading community playlist: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-
-    public void playSelectedSong(ListView<String> songList) {
-        String selectedSong = songList.getSelectionModel().getSelectedItem();
-        if (selectedSong != null) {
-            String filePath = "../Downloads/" + selectedSong;
-            File songFile = new File(filePath);
-            if (songFile.exists()) {
-                player.loadSong(filePath);
-                player.play();
-            } else {
-                showError("File Not Found", "The selected song file does not exist.");
-            }
-        } else {
-            showError("No Song Selected", "Please select a song to play.");
-        }
-    }
-
-    public void showError(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+    // Method to show an error alert
+    private void showError(String title, String content) {
+        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+        errorAlert.setTitle(title);
+        errorAlert.setHeaderText(null);
+        errorAlert.setContentText(content);
+        errorAlert.showAndWait();
     }
 }

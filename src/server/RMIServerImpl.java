@@ -10,9 +10,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Implementation of the Library interface using RMI (Remote Method Invocation).
+ * This server manages peer connections, song metadata, and song ratings, 
+ * and provides methods for peer registration, song search, streaming, and rating.
+ */
 public class RMIServerImpl extends UnicastRemoteObject implements Library {
+    // List to keep track of connected peers.
     private final List<PeerInfo> connectedPeers;
+    // Map to store metadata of songs (e.g., artist, album).
     private final Map<String, String> songMetadata;
+    // Map to store ratings for each song.
     private final Map<String, Integer> songRatings;
 
     public RMIServerImpl() throws RemoteException {
@@ -21,6 +29,7 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
         songMetadata = new HashMap<>();
         songRatings = new HashMap<>();
 
+        // Sample data for testing purposes.
         songMetadata.put("song1.mp3", "Artist: Artist1, Album: Album1");
         songMetadata.put("song2.mp3", "Artist: Artist2, Album: Album2");
         songRatings.put("song1.mp3", 5);
@@ -52,6 +61,7 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
     public List<String> searchSongs(String query) throws RemoteException {
         List<String> results = new ArrayList<>();
         for (String song : songMetadata.keySet()) {
+            // Check if the song name contains the query string (case-insensitive).
             if (song.toLowerCase().contains(query.toLowerCase())) {
                 results.add(song);
             }
@@ -62,6 +72,7 @@ public class RMIServerImpl extends UnicastRemoteObject implements Library {
     @Override
     public byte[] streamSong(String songName) throws RemoteException {
         System.out.println("Streaming song: " + songName);
+        // Return the song name as bytes (this is a placeholder; actual streaming would be more complex).
         return songName.getBytes();
     }
 
